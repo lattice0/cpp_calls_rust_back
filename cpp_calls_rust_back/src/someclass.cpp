@@ -13,7 +13,7 @@ public:
     void run() {
         std::thread t([this](){
             std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-            fptr rust_callback = reinterpret_cast<fptr>(reinterpret_cast<long>(this->callback_in_rust)) ;
+            fptr rust_callback = reinterpret_cast<fptr>(reinterpret_cast<long>(this,this->callback_in_rust)) ;
             (rust_callback)(3);
         });
         t.join();
