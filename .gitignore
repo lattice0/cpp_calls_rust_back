@@ -1,0 +1,2 @@
+src/cpp_calls_rust_back/target
+src/cpp_calls_rust_back/src/*.a
