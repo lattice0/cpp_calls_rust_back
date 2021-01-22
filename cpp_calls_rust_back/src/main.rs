@@ -7,35 +7,40 @@ extern "C" {
     pub fn cpp_some_class_set_rust_object(instance: *mut c_void, rust_object: *mut c_void);
 }
 
-#[no_mangle]
-pub extern "C" fn call_on_some_class(i: u32, some_class_instance: *mut c_void) {
-     //Should cast some_class_instance to some_class_instance: Box<SomeClass> or some_class_instance: *mut SomeClass,
-     //then we can call some_class_instance.do_something(i)
+unsafe extern "C" fn trampoline(this: *mut c_void, i: u32) {
+    let some_class = &*(this as *const SomeClass);
+
+    //let string_argument = CStr::from_ptr(string_argument).to_string_lossy();
+    some_class.do_something(i);
 }
 
-pub struct SomeClass {
+pub struct SomeClass(Box<Inner>);
+
+struct Inner {
     cpp_some_class_pointer: *mut c_void
 }
 
 impl SomeClass {
     pub fn new_some_class()-> SomeClass {
-        let s = SomeClass{
-            cpp_some_class_pointer: unsafe {cpp_new_some_class()}
-        };
+        let s = SomeClass(
+            Box::new(Inner{
+                cpp_some_class_pointer: unsafe {cpp_new_some_class()}
+            })
+        );
         s.set_rust_object();
-        s.set_callback(?);
+        s.set_callback(trampoline as *mut c_void);
         s
     }
 
-    pub fn set_rust_object() {
-        unsafe{cpp_some_class_set_rust_object(self.cpp_some_class_pointer, ?)}
+    pub fn set_rust_object(&mut self) {
+        unsafe{cpp_some_class_set_rust_object(self.cpp_some_class_pointer, self.0 as *mut c_void)}
     }
 
-    pub fn set_callback(parent: *mut c_void) {
-        unsafe {cpp_some_class_set_callback(?,?)}
+    pub fn set_callback(&mut self, parent: *mut c_void) {
+        unsafe {cpp_some_class_set_callback(self.0 as *mut c_void, parent)}
     }
 
-    pub fn do_something(i: u32) {
+    pub fn do_something(&mut self, i: u32) {
         println!("{}", i);
     }
 }
