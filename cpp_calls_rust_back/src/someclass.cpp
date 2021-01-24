@@ -1,43 +1,54 @@
-#include <iostream>
-#include <thread>
-#include <chrono>
+#include <exception>
 
-typedef void (*fptr)(int);
-
-class SomeClass {
-public: 
-    SomeClass() {
-
-    }
-
-    void run() {
-        std::thread t([this](){
-            std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-            fptr rust_callback = reinterpret_cast<fptr>(reinterpret_cast<long>(rust_object,this->callback_in_rust)) ;
-            (rust_callback)(3);
-        });
-        t.join();
-    }
-
-    void* callback_in_rust;
-    void* rust_object;
+struct Callbacks {
+  void *user_data;
+  int (*on_read)(char *buffer, int len, void *user_data);
+  int (*on_write)(const char *buffer, int len, void *user_data);
+  void (*destroy)(void *user_data);
 };
 
-extern "C" void* cpp_new_some_class() {
-    return new SomeClass();
+class OpenVpnClient {
+public:
+  OpenVpnClient(Callbacks cb) : callbacks(cb) {}
+  OpenVpnClient(OpenVpnClient &&client) {
+    callbacks = client.callbacks;
+    client.callbacks = Callbacks{};
+  }
+  OpenVpnClient &operator=(OpenVpnClient &&client) {
+    callbacks = client.callbacks;
+    client.callbacks = Callbacks{};
+    return *this;
+  }
+
+  OpenVpnClient(OpenVpnClient &) = delete;
+  OpenVpnClient &operator=(OpenVpnClient &) = delete;
+
+  ~OpenVpnClient() {
+    if (callbacks.destroy) {
+      callbacks.destroy(callbacks.user_data);
+    }
+  }
+
+private:
+  Callbacks callbacks;
+};
+
+extern "C" {
+OpenVpnClient *openvpn_client_new(Callbacks callbacks) {
+  return new OpenVpnClient(callbacks);
 }
 
-//Sets the SomeClass instance in the Rust side, so we can pass back to callback_in_rust
-extern "C" void* cpp_some_class_set_rust_object(void* instance, void* rust_object) {
-    ((SomeClass*)instance)->rust_object = rust_object;
+int openvpn_client_run(OpenVpnClient *client) {
+  try {
+    // do stuff, calling client.callbacks.on_read and friends when
+    // things happen.
+    return 0;
+  } catch (std::exception &e) {
+    return -1;
+  }
 }
 
-//Sets the Rust function `callback_in_rust` to be called by this SomeClass `instance`
-extern "C" void* cpp_some_class_set_callback(void* instance, void* callback_in_rust) {
-    ((SomeClass*)instance)->callback_in_rust = callback_in_rust;
+void openvpn_client_free(OpenVpnClient *client) { delete client; }
 }
 
-//Runs the `run` function which delays a bit before calling back the rust function
-extern "C" void* cpp_some_class_run(void* instance) {
-    ((SomeClass*)instance)->run();
-}
+int main() { return 0; }
