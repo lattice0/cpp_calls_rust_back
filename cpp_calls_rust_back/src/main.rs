@@ -3,47 +3,65 @@ use std::{
     os::raw::{c_char, c_int, c_void},
 };
 
+//use std::sync::{Arc, Mutex};
+
 struct OVPNClient {
     openvpn_client: *mut c_void,
 }
 
-impl Read for OVPNClient {
+struct OVPNClientInner {
+    
+}
+
+impl Read for OVPNClientInner {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+        println!("read for buf with size {}", buf.len());
         Ok(0)
     }
 }
 
-impl Write for OVPNClient {
+impl Write for OVPNClientInner {
     fn write(&mut self, buf: &[u8]) -> Result<usize> {
+        println!("write for buf with size {}", buf.len());
         Ok(0)
     }
     fn flush(&mut self) -> Result<()> {
+        println!("flush!");
         Ok(())
     }
 }
 
 impl OVPNClient {
     pub fn new() -> OVPNClient {
+        let inner = OVPNClientInner{
+
+        };
         let callbacks = Callbacks {
-            user_data: Box::into_raw(Box::new(self)) as *mut c_void,
-            on_read: on_read_trampoline::<OVPNClient>,
-            on_write: on_write_trampoline::<OVPNClient>,
-            destroy: destroy_trampoline::<OVPNClient>,
+            user_data: Box::into_raw(Box::new(inner)) as *mut c_void,
+            on_read: on_read_trampoline::<OVPNClientInner>,
+            on_write: on_write_trampoline::<OVPNClientInner>,
+            destroy: destroy_trampoline::<OVPNClientInner>,
         };
         OVPNClient {
-            openvpn_client: openvpn_client_new(callbacks),
+            openvpn_client: unsafe{openvpn_client_new(callbacks)},
         }
+    }
+
+    pub fn run(&self) -> i32 {
+        unsafe{openvpn_client_run(self.openvpn_client)}
     }
 }
 
 impl Drop for OVPNClient {
     fn drop(&mut self) {
-        openvpn_client_free(self.openvpn_client);
+        unsafe{openvpn_client_free(self.openvpn_client)};
     }
 }
 
 fn main() {
     let o = OVPNClient::new();
+    let i = o.run();
+    println!("run: {}", i);
     std::thread::sleep(std::time::Duration::from_secs(10));
 }
 

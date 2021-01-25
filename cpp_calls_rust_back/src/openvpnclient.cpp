@@ -1,4 +1,5 @@
 #include <exception>
+#include <iostream>
 
 struct Callbacks {
   void *user_data;
@@ -29,7 +30,7 @@ public:
     }
   }
 
-private:
+public:
   Callbacks callbacks;
 };
 
@@ -42,6 +43,8 @@ int openvpn_client_run(OpenVpnClient *client) {
   try {
     // do stuff, calling client.callbacks.on_read and friends when
     // things happen.
+    char* b;
+    int r = client->callbacks.on_read(b, 5, client->callbacks.user_data);
     return 0;
   } catch (std::exception &e) {
     return -1;
@@ -51,4 +54,4 @@ int openvpn_client_run(OpenVpnClient *client) {
 void openvpn_client_free(OpenVpnClient *client) { delete client; }
 }
 
-int main() { return 0; }
+//int main() { return 0; }

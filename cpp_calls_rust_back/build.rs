@@ -1,6 +1,6 @@
 
 fn main() {
     cc::Build::new()
-        .file("src/someclass.cpp")
-        .compile("libsomeclass.a");
+        .file("src/openvpnclient.cpp")
+        .compile("libopenvpnclient.a");
 }
